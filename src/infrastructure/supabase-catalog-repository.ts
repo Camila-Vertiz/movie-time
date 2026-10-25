@@ -8,7 +8,12 @@ export class SupabaseCatalogRepository implements CatalogRepository {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!url || !key) throw new Error("Supabase configuration is missing");
-    const db = createClient(url, key, { auth: { persistSession: false } });
+    const db = createClient(url, key, {
+      auth: { persistSession: false },
+      global: {
+        fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+      },
+    });
     const [movies, cinemas, sources] = await Promise.all([
       db.from("movies").select("*"),
       db.from("cinemas").select("*"),
