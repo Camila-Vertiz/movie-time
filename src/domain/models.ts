@@ -10,7 +10,7 @@ export const movieSchema = z.object({
    sinopsis: z.string().nullable().default(null),
    fechaEstreno: z.string().date().nullable().default(null),
    proximoEstreno: z.boolean().default(false),
-   fechaActualizacion: z.string().datetime(),
+   fechaActualizacion: z.string().datetime({ offset: true }),
 });
 
 export const cinemaSchema = z.object({

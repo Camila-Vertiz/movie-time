@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { localDate, addDays, displayTime } from "../src/lib/dates";
-import { validateScrapeResult } from "../src/domain/models";
+import { movieSchema, validateScrapeResult } from "../src/domain/models";
 
 test("Costa Rica dates do not switch at UTC midnight", () => {
    assert.equal(localDate(new Date("2026-10-24T02:00:00Z")), "2026-10-23");
@@ -15,6 +15,12 @@ const result = () => ({
    movies: [{ id: "movie", titulo: "Film", genero: null, duracion: null, posterUrl: null, fechaActualizacion: new Date().toISOString() }],
    cinemas: [{ id: "garbo", cadena: "garbo", nombre: "Garbo", direccion: "San Jose", url: "https://salagarbo.com/" }],
    showtimes: [{ id: "show", movieId: "movie", cinemaId: "garbo", fecha: "2026-10-23", hora: "19:30", sala: null, precio: null, sourceUrl: "https://salagarbo.com/" }],
+});
+
+test("movie update timestamps accept UTC offsets returned by Postgres", () => {
+   const movie = result().movies[0];
+   assert.doesNotThrow(() => movieSchema.parse({ ...movie, fechaActualizacion: "2026-10-25T01:41:34.860+00:00" }));
+   assert.doesNotThrow(() => movieSchema.parse({ ...movie, fechaActualizacion: "2026-10-25T01:41:34.860Z" }));
 });
 
 test("validates real schedules and rejects orphaned or empty snapshots", () => {
