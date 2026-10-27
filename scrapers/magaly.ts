@@ -49,7 +49,12 @@ export class MagalyScraper implements CinemaScraper {
           for (const screening of screenings) {
             const match = screening.text.match(/^(.*?)\s*-\s*(\d{1,2}:\d{2}\s*(?:AM|PM))$/i);
             const hora = match ? parseClock(match[2]) : null;
-            if (!match || !hora || new URL(screening.url).origin !== new URL(this.url).origin) throw new Error("Unrecognized screening layout");
+            if (!match || !hora) {
+              throw new Error(`Unrecognized screening label: ${JSON.stringify(screening.text.slice(0, 120))}`);
+            }
+            if (new URL(screening.url).origin !== new URL(this.url).origin) {
+              throw new Error("Screening link redirected to a different origin");
+            }
             const sala = match[1].trim();
             showtimes.push({ id: stableId(this.id, id, fecha, hora, sala), movieId: id, cinemaId: cinema.id, fecha, hora, sala,
               precio: null, formato: null, idioma: null, sourceUrl: screening.url });
