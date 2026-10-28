@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseCinepolisCinemaPage } from "../scrapers/cinepolis";
 import { parseGarbo } from "../scrapers/garbo";
+import { parseMagalyScreeningLabel } from "../scrapers/magaly";
 import { parseStructuredEvents } from "../scrapers/shared/structured-scraper";
 import { parseClock, parseGarboDate, parseSpanishDay, safeUrl, stableId } from "../scrapers/shared/normalize";
 import { getEnabledScrapers } from "../scrapers/registry";
@@ -36,6 +37,20 @@ test("Garbo parser extracts only explicit showtimes and nullable metadata", () =
   assert.equal(result.showtimes[0].precio, 3000);
   assert.equal(result.showtimes[0].sourceUrl, "https://salagarbo.com/product/film/");
   assert.equal(parseGarbo("<h1>Maintenance</h1>").showtimes.length, 0);
+});
+
+test("Magaly screening labels allow an optional language suffix", () => {
+  assert.deepEqual(parseMagalyScreeningLabel("La Salita - 1:00 PM (Doblada al español)"), {
+    sala: "La Salita",
+    hora: "13:00",
+    idioma: "Doblada al español",
+  });
+  assert.deepEqual(parseMagalyScreeningLabel("Sala 2 - 6:40 PM"), {
+    sala: "Sala 2",
+    hora: "18:40",
+    idioma: null,
+  });
+  assert.equal(parseMagalyScreeningLabel("La Salita - horario no disponible"), null);
 });
 
 test("Cinépolis parser extracts cinema schedule fields from the visible schedule DOM", () => {

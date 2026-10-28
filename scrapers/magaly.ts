@@ -3,6 +3,15 @@ import type { CinemaScraper, ScraperContext } from "./types";
 import type { Cinema, Movie, ScrapeResult, Showtime } from "../src/domain/models";
 import { parseClock, parseSpanishDay, safeUrl, stableId } from "./shared/normalize";
 
+export function parseMagalyScreeningLabel(value: string): { sala: string; hora: string; idioma: string | null } | null {
+  const match = value.trim().match(/^(.*?)\s*-\s*(\d{1,2}:\d{2}\s*(?:AM|PM))(?:\s*\(([^()]*)\))?$/i);
+  if (!match) return null;
+  const sala = match[1].trim();
+  const hora = parseClock(match[2]);
+  if (!sala || !hora) return null;
+  return { sala, hora, idioma: match[3]?.trim() || null };
+}
+
 export class MagalyScraper implements CinemaScraper {
   readonly id = "magaly";
   readonly name = "Cine Magaly";
@@ -47,17 +56,15 @@ export class MagalyScraper implements CinemaScraper {
           }
           const screenings = await page.locator('#screeningsContainer a[href*="/seleccionar/"]').evaluateAll((elements) => elements.map((element) => ({ text: element.textContent?.trim() ?? "", url: (element as HTMLAnchorElement).href })));
           for (const screening of screenings) {
-            const match = screening.text.match(/^(.*?)\s*-\s*(\d{1,2}:\d{2}\s*(?:AM|PM))$/i);
-            const hora = match ? parseClock(match[2]) : null;
-            if (!match || !hora) {
+            const parsed = parseMagalyScreeningLabel(screening.text);
+            if (!parsed) {
               throw new Error(`Unrecognized screening label: ${JSON.stringify(screening.text.slice(0, 120))}`);
             }
             if (new URL(screening.url).origin !== new URL(this.url).origin) {
               throw new Error("Screening link redirected to a different origin");
             }
-            const sala = match[1].trim();
-            showtimes.push({ id: stableId(this.id, id, fecha, hora, sala), movieId: id, cinemaId: cinema.id, fecha, hora, sala,
-              precio: null, formato: null, idioma: null, sourceUrl: screening.url });
+            showtimes.push({ id: stableId(this.id, id, fecha, parsed.hora, parsed.sala), movieId: id, cinemaId: cinema.id, fecha, hora: parsed.hora, sala: parsed.sala,
+              precio: null, formato: null, idioma: parsed.idioma, sourceUrl: screening.url });
           }
         }
       }
