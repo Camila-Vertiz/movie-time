@@ -76,6 +76,7 @@ test("Cinépolis parser extracts cinema schedule fields from the visible schedul
   assert.equal(result.showtimes[0].formato, "DOB 2D");
   assert.equal(result.showtimes[0].idioma, "Doblada");
   assert.equal(result.showtimes[0].sala, "SALA 11");
+  assert.equal(parseCinepolisCinemaPage(html, "https://cinepolis.co.cr/cinema/cinepolis-terramall/", "2026-10-29").showtimes.length, 0);
 });
 
 test("JSON-LD requires a ScreeningEvent with movie, location and explicit date", () => {

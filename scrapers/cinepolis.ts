@@ -14,7 +14,7 @@ async function closeWelcomeVideoIfVisible(page: import("playwright").Page): Prom
   await popup.waitFor({ state: "hidden" });
 }
 
-export function parseCinepolisCinemaPage(html: string, cinemaUrl: string): ScrapeResult {
+export function parseCinepolisCinemaPage(html: string, cinemaUrl: string, expectedDate?: string): ScrapeResult {
   const $ = load(html);
   const cinemaName = $("#form-reservation .step-title").first().text().replace(/^Cine:\s*/i, "").trim();
   const slug = new URL(cinemaUrl).pathname.split("/").filter(Boolean).at(-1);
@@ -61,6 +61,7 @@ export function parseCinepolisCinemaPage(html: string, cinemaUrl: string): Scrap
       if (!date || !time) {
         throw new Error(`Cinépolis showtime is missing its date or time for "${title}"`);
       }
+      if (expectedDate && date !== expectedDate) return;
       const format = $(input).attr("data-format")?.trim() || null;
       const room = $(input).attr("data-room")?.trim() || null;
       showtimes.push({
@@ -122,16 +123,14 @@ export class CinepolisScraper implements CinemaScraper {
           const checkedDate = await page.locator('input[name="field-movie-date"]:checked').getAttribute("value");
           if (checkedDate !== date) {
             await page.locator(`label[for="field-movie-date-${date}"]`).click({ force: true });
-            await page.waitForFunction((selectedDate) => {
-              const checked = document.querySelector<HTMLInputElement>('input[name="field-movie-date"]:checked');
-              const showtimes = [...document.querySelectorAll<HTMLInputElement>('input[name="field-projection"]')];
-              return checked?.value === selectedDate
-                && showtimes.every((showtime) => showtime.dataset.showDate === selectedDate);
-            }, date);
+            await page.waitForFunction(
+              (selectedDate) => document.querySelector<HTMLInputElement>('input[name="field-movie-date"]:checked')?.value === selectedDate,
+              date,
+            );
             await page.waitForTimeout(1_500);
           }
 
-          const result = parseCinepolisCinemaPage(await page.content(), cinemaUrl);
+          const result = parseCinepolisCinemaPage(await page.content(), cinemaUrl, date);
           result.movies.forEach((movie) => movies.set(movie.id, movie));
           result.cinemas.forEach((cinema) => cinemas.set(cinema.id, cinema));
           result.showtimes.forEach((showtime) => showtimes.set(showtime.id, showtime));
