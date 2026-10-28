@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { parseCinepolisCinemaPage } from "../scrapers/cinepolis";
 import { parseGarbo } from "../scrapers/garbo";
 import { parseStructuredEvents } from "../scrapers/shared/structured-scraper";
 import { parseClock, parseGarboDate, parseSpanishDay, safeUrl, stableId } from "../scrapers/shared/normalize";
@@ -35,6 +36,31 @@ test("Garbo parser extracts only explicit showtimes and nullable metadata", () =
   assert.equal(result.showtimes[0].precio, 3000);
   assert.equal(result.showtimes[0].sourceUrl, "https://salagarbo.com/product/film/");
   assert.equal(parseGarbo("<h1>Maintenance</h1>").showtimes.length, 0);
+});
+
+test("Cinépolis parser extracts cinema schedule fields from the visible schedule DOM", () => {
+  const html = `<form id="form-reservation">
+    <h3 class="step-title">Cine: Cinépolis TerraMall</h3>
+    <div class="movie-projection">
+      <div class="movie-projection__inner">
+        <a href="https://cinepolis.co.cr/movie/film/?cinema=1627">
+          <img src="/poster.jpg"><h2>Film</h2>
+          <span class="movie-projection__inner--meta">TP | 107 Minutos | 2D</span>
+        </a>
+      </div>
+      <ul><li><input name="field-projection" data-show-date="2026-10-28" data-show-time="18:05" data-format="DOB 2D" data-room="SALA 11"></li></ul>
+    </div>
+  </form>`;
+  const result = validateScrapeResult(parseCinepolisCinemaPage(html, "https://cinepolis.co.cr/cinema/cinepolis-terramall/"));
+  assert.equal(result.cinemas[0].nombre, "Cinépolis TerraMall");
+  assert.equal(result.movies[0].titulo, "Film");
+  assert.equal(result.movies[0].duracion, 107);
+  assert.equal(result.movies[0].posterUrl, "https://cinepolis.co.cr/poster.jpg");
+  assert.equal(result.showtimes[0].fecha, "2026-10-28");
+  assert.equal(result.showtimes[0].hora, "18:05");
+  assert.equal(result.showtimes[0].formato, "DOB 2D");
+  assert.equal(result.showtimes[0].idioma, "Doblada");
+  assert.equal(result.showtimes[0].sala, "SALA 11");
 });
 
 test("JSON-LD requires a ScreeningEvent with movie, location and explicit date", () => {
