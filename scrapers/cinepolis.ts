@@ -6,6 +6,14 @@ import { safeUrl, stableId } from "./shared/normalize";
 
 const BASE_URL = "https://cinepolis.co.cr/";
 
+async function closeWelcomeVideoIfVisible(page: import("playwright").Page): Promise<void> {
+  const popup = page.locator(".welcome-video-popup");
+  if (!await popup.isVisible()) return;
+
+  await popup.locator(".button-close").click();
+  await popup.waitFor({ state: "hidden" });
+}
+
 export function parseCinepolisCinemaPage(html: string, cinemaUrl: string): ScrapeResult {
   const $ = load(html);
   const cinemaName = $("#form-reservation .step-title").first().text().replace(/^Cine:\s*/i, "").trim();
@@ -87,6 +95,7 @@ export class CinepolisScraper implements CinemaScraper {
 
     try {
       await context.navigate(page, this.url);
+      await closeWelcomeVideoIfVisible(page);
       await page.locator("a.show-cinemas-popup").first().click();
       const cinemaLinks = await page.locator('#popup-cinemas a[href*="/cinema/"]').evaluateAll((anchors) =>
         anchors.map((anchor) => (anchor as HTMLAnchorElement).href)
