@@ -24,13 +24,17 @@ function createNavigator(context: BrowserContext, userAgent: string) {
     if (url.protocol !== "https:") throw new Error("Only HTTPS sources are accepted");
     if (!policies.has(url.origin)) {
       const robotsUrl = `${url.origin}/robots.txt`;
-      const policyPage = await context.newPage();
-      try {
-        const response = await policyPage.goto(robotsUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
-        if (!response || (!response.ok() && response.status() !== 404)) throw new Error(`robots.txt unavailable (${response?.status()}); refusing to crawl`);
-        if (new URL(policyPage.url()).origin !== url.origin) throw new Error("robots.txt redirected to a different origin");
-        policies.set(url.origin, robotsParser(robotsUrl, response.status() === 404 ? "" : await response.text()));
-      } finally { await policyPage.close(); }
+      const response = await context.request.get(robotsUrl, {
+        timeout: 30_000,
+        headers: { "user-agent": userAgent },
+      });
+      if (!response.ok() && response.status() !== 404) {
+        throw new Error(`robots.txt unavailable (${response.status()}); refusing to crawl`);
+      }
+      if (new URL(response.url()).origin !== url.origin) {
+        throw new Error("robots.txt redirected to a different origin");
+      }
+      policies.set(url.origin, robotsParser(robotsUrl, response.status() === 404 ? "" : await response.text()));
     }
     const policy = policies.get(url.origin)!;
     if (policy.isAllowed(url.href, userAgent) === false) throw new Error(`robots.txt disallows ${url.pathname}`);
